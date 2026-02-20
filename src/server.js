@@ -1,0 +1,91 @@
+/**
+ * Telematics Server — Entry Point
+ *
+ * 1. Serves the frontend (static files from src/public/)
+ * 2. Connects to an MQTT broker to receive telematics packets
+ * 3. Parses packets → validates CRC → runs geofence checks → stores in memory
+ * 4. Exposes REST API at /api/*
+ */
+
+const express = require('express');
+const mqtt = require('mqtt');
+const path = require('path');
+const cors = require('cors');
+require('dotenv').config();
+
+const packetParser = require('./services/packetParser');
+const geofenceService = require('./services/geofenceService');
+const vehicleController = require('./controllers/vehicleController');
+const vehicleRoutes = require('./routes/vehicleRoutes');
+
+// ─── Express Setup ──────────────────────────────────────────────────
+const app = express();
+app.use(cors());
+app.use(express.json());
+app.use(express.static(path.join(__dirname, 'public'))); // Serve frontend
+
+// Mount API routes
+app.use('/api', vehicleRoutes);
+
+// Fallback: serve index.html for any non-API route (SPA support)
+app.get('/{*splat}', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// ─── MQTT Client ────────────────────────────────────────────────────
+const MQTT_BROKER = process.env.MQTT_BROKER_URL || 'mqtt://localhost:1883';
+const MQTT_TOPIC = process.env.MQTT_TOPIC || 'telematic/data';
+
+console.log(`[MQTT] Connecting to broker: ${MQTT_BROKER}`);
+const mqttClient = mqtt.connect(MQTT_BROKER);
+
+mqttClient.on('connect', () => {
+    console.log('[MQTT] Connected to broker');
+    mqttClient.subscribe(MQTT_TOPIC, (err) => {
+        if (err) {
+            console.error('[MQTT] Subscribe error:', err.message);
+        } else {
+            console.log(`[MQTT] Subscribed to topic: ${MQTT_TOPIC}`);
+        }
+    });
+});
+
+mqttClient.on('message', (topic, message) => {
+    const rawPacket = message.toString();
+    console.log(`[MQTT] Received packet on ${topic} (${rawPacket.length} chars)`);
+
+    // 1. Parse the telematics packet
+    const parsed = packetParser.parsePacket(rawPacket);
+    if (!parsed) {
+        console.warn('[MQTT] Packet could not be parsed — skipping');
+        return;
+    }
+
+    // 2. Geofence check
+    const geoResult = geofenceService.checkGeofence(parsed.latitude, parsed.longitude);
+    parsed.geofence = geoResult;
+
+    console.log(`[MQTT] Vehicle ${parsed.vehicleId} — lat: ${parsed.latitude}, lon: ${parsed.longitude}, inside geofence: ${geoResult.inside}`);
+
+    // 3. Store the data so the API can serve it
+    vehicleController.updateVehicleData(parsed);
+});
+
+mqttClient.on('error', (err) => {
+    console.error('[MQTT] Connection error:', err.message);
+});
+
+mqttClient.on('offline', () => {
+    console.warn('[MQTT] Client went offline — will attempt to reconnect');
+});
+
+// ─── Start HTTP Server ──────────────────────────────────────────────
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+    console.log('═══════════════════════════════════════════');
+    console.log(`  Telematics Server running on port ${PORT}`);
+    console.log(`  Frontend : http://localhost:${PORT}`);
+    console.log(`  API      : http://localhost:${PORT}/api/status`);
+    console.log(`  Geofence : http://localhost:${PORT}/api/geofence`);
+    console.log('═══════════════════════════════════════════');
+});
