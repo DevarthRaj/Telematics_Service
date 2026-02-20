@@ -39,7 +39,7 @@ mqttClient.on('message', (topic, message) => {
     const rawPacket = message.toString();
     console.log(`[MQTT] Received packet on ${topic} (${rawPacket.length} chars)`);
 
-    // 1. Parse the telematics packet
+    // 1. Parse the ASCII CSV telematics packet
     const parsed = packetParser.parsePacket(rawPacket);
     if (!parsed) {
         console.warn('[MQTT] Packet could not be parsed — skipping');
@@ -50,11 +50,12 @@ mqttClient.on('message', (topic, message) => {
     const geoResult = geofenceService.checkGeofence(parsed.latitude, parsed.longitude);
     parsed.geofence = geoResult;
 
-    console.log(`[MQTT] Vehicle ${parsed.vehicleId} — lat: ${parsed.latitude}, lon: ${parsed.longitude}, inside geofence: ${geoResult.inside}`);
+    console.log(`[MQTT] Vehicle ${parsed.vehicleId} — lat: ${parsed.latitude}, lon: ${parsed.longitude}, speed: ${parsed.speed} km/h`);
 
     // 3. Store the data so the API can serve it
     vehicleController.updateVehicleData(parsed);
 });
+
 
 // ─── Start HTTP Server ──────────────────────────────────────────────
 const PORT = process.env.PORT || 3000;

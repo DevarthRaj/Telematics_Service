@@ -1,140 +1,20 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Telematics Dashboard</title>
-    <style>
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-        body {
-            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-            background: #0f172a;
-            color: #e2e8f0;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 2rem;
-        }
-
-        h1 {
-            font-size: 1.8rem;
-            background: linear-gradient(135deg, #38bdf8, #818cf8);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            margin-bottom: 0.5rem;
-        }
-
-        .subtitle {
-            color: #94a3b8;
-            margin-bottom: 2rem;
-            font-size: 0.95rem;
-        }
-
-        .card {
-            background: #1e293b;
-            border: 1px solid #334155;
-            border-radius: 12px;
-            padding: 1.5rem 2rem;
-            width: 100%;
-            max-width: 600px;
-            margin-bottom: 1.5rem;
-            box-shadow: 0 4px 24px rgba(0,0,0,.3);
-        }
-
-        .card h2 {
-            font-size: 1.1rem;
-            color: #38bdf8;
-            margin-bottom: 1rem;
-        }
-
-        pre {
-            background: #0f172a;
-            border-radius: 8px;
-            padding: 1rem;
-            overflow-x: auto;
-            font-size: 0.85rem;
-            line-height: 1.6;
-            color: #a5f3fc;
-        }
-
-        button {
-            background: linear-gradient(135deg, #6366f1, #818cf8);
-            color: #fff;
-            border: none;
-            border-radius: 8px;
-            padding: 0.6rem 1.4rem;
-            font-size: 0.9rem;
-            cursor: pointer;
-            transition: opacity 0.2s;
-            margin-top: 1rem;
-        }
-        button:hover { opacity: 0.85; }
-
-        .status-dot {
-            display: inline-block;
-            width: 10px; height: 10px;
-            border-radius: 50%;
-            margin-right: 6px;
-            vertical-align: middle;
-        }
-        .dot-green  { background: #22c55e; box-shadow: 0 0 6px #22c55e; }
-        .dot-yellow { background: #eab308; box-shadow: 0 0 6px #eab308; }
-
-        footer {
-            margin-top: auto;
-            padding-top: 2rem;
-            color: #475569;
-            font-size: 0.8rem;
-        }
-    </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet" />
+  <script type="module" crossorigin src="/assets/index-CLsti3vS.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-D_RxOege.css">
 </head>
+
 <body>
-
-    <h1>🚗 Telematics Dashboard</h1>
-    <p class="subtitle">Replace this page with your friend's frontend in <code>src/public/</code></p>
-
-    <!-- Vehicle Status Card -->
-    <div class="card">
-        <h2><span class="status-dot dot-green"></span> Vehicle Status</h2>
-        <pre id="status-output">Loading…</pre>
-        <button onclick="fetchStatus()">Refresh Status</button>
-    </div>
-
-    <!-- Geofence Card -->
-    <div class="card">
-        <h2><span class="status-dot dot-yellow"></span> Geofence Check</h2>
-        <pre id="geofence-output">Loading…</pre>
-        <button onclick="fetchGeofence()">Refresh Geofence</button>
-    </div>
-
-    <footer>Telematics Server &mdash; Placeholder Dashboard</footer>
-
-    <script>
-        async function fetchStatus() {
-            try {
-                const res = await fetch('/api/status');
-                const data = await res.json();
-                document.getElementById('status-output').textContent = JSON.stringify(data, null, 2);
-            } catch (err) {
-                document.getElementById('status-output').textContent = 'Error: ' + err.message;
-            }
-        }
-
-        async function fetchGeofence() {
-            try {
-                const res = await fetch('/api/geofence');
-                const data = await res.json();
-                document.getElementById('geofence-output').textContent = JSON.stringify(data, null, 2);
-            } catch (err) {
-                document.getElementById('geofence-output').textContent = 'Error: ' + err.message;
-            }
-        }
-
-        // Auto-fetch on load
-        fetchStatus();
-        fetchGeofence();
-    </script>
+    <div id="root"></div>
 </body>
+
 </html>
