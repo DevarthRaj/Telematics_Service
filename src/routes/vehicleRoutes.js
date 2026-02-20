@@ -12,4 +12,7 @@ router.get('/status', vehicleController.getStatus);
 // GET /api/geofence — geofence check for all vehicles
 router.get('/geofence', vehicleController.getGeofenceStatus);
 
+// POST /api/immobilizer — toggle vehicle kill switch
+router.post('/immobilizer', vehicleController.setImmobilizer);
+
 module.exports = router;

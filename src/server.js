@@ -8,11 +8,11 @@
  */
 
 const express = require('express');
-const mqtt = require('mqtt');
 const path = require('path');
 const cors = require('cors');
 require('dotenv').config();
 
+const mqttClient = require('./services/mqttService');
 const packetParser = require('./services/packetParser');
 const geofenceService = require('./services/geofenceService');
 const vehicleController = require('./controllers/vehicleController');
@@ -32,24 +32,9 @@ app.get('/{*splat}', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// ─── MQTT Client ────────────────────────────────────────────────────
-const MQTT_BROKER = process.env.MQTT_BROKER_URL || 'mqtt://localhost:1883';
-const MQTT_TOPIC = process.env.MQTT_TOPIC || 'telematic/data';
-
-console.log(`[MQTT] Connecting to broker: ${MQTT_BROKER}`);
-const mqttClient = mqtt.connect(MQTT_BROKER);
-
-mqttClient.on('connect', () => {
-    console.log('[MQTT] Connected to broker');
-    mqttClient.subscribe(MQTT_TOPIC, (err) => {
-        if (err) {
-            console.error('[MQTT] Subscribe error:', err.message);
-        } else {
-            console.log(`[MQTT] Subscribed to topic: ${MQTT_TOPIC}`);
-        }
-    });
-});
-
+// ─── MQTT Message Handler ───────────────────────────────────────────
+// Inject MQTT client into controller so immobilizer can publish commands
+vehicleController.setImmobilizer._mqttClient = mqttClient;
 mqttClient.on('message', (topic, message) => {
     const rawPacket = message.toString();
     console.log(`[MQTT] Received packet on ${topic} (${rawPacket.length} chars)`);
@@ -69,14 +54,6 @@ mqttClient.on('message', (topic, message) => {
 
     // 3. Store the data so the API can serve it
     vehicleController.updateVehicleData(parsed);
-});
-
-mqttClient.on('error', (err) => {
-    console.error('[MQTT] Connection error:', err.message);
-});
-
-mqttClient.on('offline', () => {
-    console.warn('[MQTT] Client went offline — will attempt to reconnect');
 });
 
 // ─── Start HTTP Server ──────────────────────────────────────────────

@@ -1,0 +1,12 @@
+.vehicle-card .ign {
+    font-weight: 700;
+    font-size: 0.88rem;
+}
+
+.vehicle-card .ign.on {
+    color: var(--accent-green);
+}
+
+.vehicle-card .ign.off {
+    color: var(--accent-red);
+}

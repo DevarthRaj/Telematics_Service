@@ -1,16 +1,37 @@
 /**
  * Telematics Packet Parser
  * 
- * Parses raw hex/ASCII telematics packets into structured vehicle data.
- * Packet format (typical telematics frame):
- *   [Start Bytes (2)] [Packet Length (2)] [IMEI (15)] [Command (1)]
- *   [Data Payload (variable)] [CRC (2)] [Stop Bytes (2)]
+ * Parses raw hex telematics packets into structured vehicle data.
+ * Packet frame:
+ *   [Start Bytes] [Packet Length] [IMEI (15)] [Command]
+ *   [Data Payload] [CRC] [Stop Bytes]
  * 
- * The data payload contains GPS coordinates, speed, ignition status,
- * timestamps, and other vehicle parameters.
+ * Data payload fields (in order):
+ *   Packet Status, Frame Number, Operator, Signal Strength,
+ *   MCC, MNC, Fix Status, Latitude, NS, Longitude, EW,
+ *   HDOP, PDOP, Speed, Ignition, Immobilizer,
+ *   Analog Voltage, Date Time
  */
 
 const crcValidator = require('./crcValidator');
+
+// Operator code → name mapping
+const OPERATORS = {
+    0: 'Unknown',
+    1: 'BSNL',
+    2: 'VI',
+    3: 'Airtel',
+    4: 'JIO'
+};
+
+/**
+ * Read `count` hex characters from `hex` at `offset`, parse as integer.
+ * Returns [value, newOffset].
+ */
+function readHexInt(hex, offset, charCount) {
+    const val = parseInt(hex.substring(offset, offset + charCount), 16);
+    return [val, offset + charCount];
+}
 
 /**
  * Parse a raw telematics packet string into structured data.
@@ -21,7 +42,6 @@ function parsePacket(rawPacket) {
     try {
         const packet = rawPacket.trim();
 
-        // Minimum viable packet length check (header + minimal payload + CRC + stop)
         if (packet.length < 30) {
             console.warn('[PacketParser] Packet too short:', packet.length, 'chars');
             return null;
@@ -33,7 +53,7 @@ function parsePacket(rawPacket) {
             return null;
         }
 
-        // --- 2. Extract Header Fields ---
+        // --- 2. Extract Header ---
         let offset = 0;
 
         const startBytes = packet.substring(offset, offset + 4);
@@ -49,8 +69,7 @@ function parsePacket(rawPacket) {
         offset += 2;
 
         // --- 3. Extract Data Payload ---
-        // The remaining bytes minus CRC (4 hex chars) and stop bytes (4 hex chars)
-        const payloadEnd = packet.length - 8; // 4 chars CRC + 4 chars stop
+        const payloadEnd = packet.length - 8; // minus CRC (4) + stop (4)
         const payload = packet.substring(offset, payloadEnd);
 
         const vehicleData = parsePayload(payload, imei);
@@ -66,53 +85,115 @@ function parsePacket(rawPacket) {
 }
 
 /**
- * Parse the data payload section of a telematics packet.
- * @param {string} payload - Hex string of the data payload.
- * @param {string} imei    - Device IMEI (hex string, 30 chars).
- * @returns {object} Parsed vehicle telemetry data.
+ * Parse the data payload according to the spec table.
+ * Each field is read sequentially as 2-byte (4 hex char) values
+ * unless stated otherwise.
  */
 function parsePayload(payload, imei) {
-    // Field positions are illustrative and should be adjusted
-    // to match the exact protocol from Table 5.1 in your spec PDF.
     let offset = 0;
 
-    // Timestamp — 4 bytes (8 hex chars), Unix epoch seconds
-    const timestampHex = payload.substring(offset, offset + 8);
-    const timestamp = parseInt(timestampHex, 16);
-    offset += 8;
+    // Packet Status — 1 byte (2 hex): 0=History, 1=Live
+    let packetStatus;
+    [packetStatus, offset] = readHexInt(payload, offset, 2);
 
-    // Latitude — 4 bytes (8 hex chars), stored as degrees × 1 000 000
-    const latRaw = parseInt(payload.substring(offset, offset + 8), 16);
-    const latitude = latRaw / 1000000;
-    offset += 8;
+    // Frame Number — 2 bytes (4 hex)
+    let frameNumber;
+    [frameNumber, offset] = readHexInt(payload, offset, 4);
 
-    // Longitude — 4 bytes (8 hex chars)
-    const lonRaw = parseInt(payload.substring(offset, offset + 8), 16);
-    const longitude = lonRaw / 1000000;
-    offset += 8;
+    // Operator — 1 byte (2 hex): 00=Unknown, 01=BSNL, 02=VI, 03=Airtel, 04=JIO
+    let operatorCode;
+    [operatorCode, offset] = readHexInt(payload, offset, 2);
 
-    // Speed — 2 bytes (4 hex chars), km/h
-    const speed = parseInt(payload.substring(offset, offset + 4), 16);
-    offset += 4;
+    // Signal Strength — 1 byte (2 hex): 0–31
+    let signalStrength;
+    [signalStrength, offset] = readHexInt(payload, offset, 2);
 
-    // Heading / course — 2 bytes (4 hex chars), degrees
-    const heading = parseInt(payload.substring(offset, offset + 4), 16);
-    offset += 4;
+    // MCC — 2 bytes (4 hex)
+    let mcc;
+    [mcc, offset] = readHexInt(payload, offset, 4);
 
-    // Ignition status — 1 byte (2 hex chars): 0x01 = ON, 0x00 = OFF
-    const ignitionByte = parseInt(payload.substring(offset, offset + 2), 16);
-    const ignition = ignitionByte === 1;
-    offset += 2;
+    // MNC — 2 bytes (4 hex)
+    let mnc;
+    [mnc, offset] = readHexInt(payload, offset, 4);
+
+    // Fix Status — 1 byte (2 hex): 0=No Fix, 1=Valid Fix
+    let fixStatus;
+    [fixStatus, offset] = readHexInt(payload, offset, 2);
+
+    // Latitude — 4 bytes (8 hex): divide by 1,000,000
+    let latRaw;
+    [latRaw, offset] = readHexInt(payload, offset, 8);
+    let latitude = latRaw / 1000000;
+
+    // NS Indication — 1 byte (2 hex): 0=N, 1=S
+    let nsIndicator;
+    [nsIndicator, offset] = readHexInt(payload, offset, 2);
+    if (nsIndicator === 1) latitude = -latitude;
+
+    // Longitude — 4 bytes (8 hex): divide by 1,000,000
+    let lonRaw;
+    [lonRaw, offset] = readHexInt(payload, offset, 8);
+    let longitude = lonRaw / 1000000;
+
+    // EW Indication — 1 byte (2 hex): 0=E, 1=W
+    let ewIndicator;
+    [ewIndicator, offset] = readHexInt(payload, offset, 2);
+    if (ewIndicator === 1) longitude = -longitude;
+
+    // HDOP — 2 bytes (4 hex): divide by 100
+    let hdopRaw;
+    [hdopRaw, offset] = readHexInt(payload, offset, 4);
+    const hdop = hdopRaw / 100;
+
+    // PDOP — 2 bytes (4 hex): divide by 100
+    let pdopRaw;
+    [pdopRaw, offset] = readHexInt(payload, offset, 4);
+    const pdop = pdopRaw / 100;
+
+    // Speed — 2 bytes (4 hex): divide by 100 (km/h)
+    let speedRaw;
+    [speedRaw, offset] = readHexInt(payload, offset, 4);
+    const speed = speedRaw / 100;
+
+    // Ignition Status — 1 byte (2 hex): 0=OFF, 1=ON
+    let ignitionByte;
+    [ignitionByte, offset] = readHexInt(payload, offset, 2);
+
+    // Immobilizer Status — 1 byte (2 hex): 0=OFF, 1=ON
+    let immobilizerByte;
+    [immobilizerByte, offset] = readHexInt(payload, offset, 2);
+
+    // Analog Voltage — 2 bytes (4 hex): divide by 10 (V)
+    let voltageRaw;
+    [voltageRaw, offset] = readHexInt(payload, offset, 4);
+    const voltage = voltageRaw / 10;
+
+    // Date Time — 4 bytes (8 hex): UTC epoch seconds
+    let epochSeconds;
+    [epochSeconds, offset] = readHexInt(payload, offset, 8);
 
     return {
         vehicleId: imei,
+        isLive: packetStatus === 1,
+        frameNumber,
+        operator: OPERATORS[operatorCode] || 'Unknown',
+        operatorCode,
+        signalStrength,
+        mcc,
+        mnc,
+        gpsFix: fixStatus === 1,
         latitude,
         longitude,
+        nsIndicator: nsIndicator === 0 ? 'N' : 'S',
+        ewIndicator: ewIndicator === 0 ? 'E' : 'W',
+        hdop,
+        pdop,
         speed,
-        heading,
-        ignition,
-        timestamp: new Date(timestamp * 1000).toISOString(),
-        status: ignition ? 'Active' : 'Inactive',
+        ignition: ignitionByte === 1,
+        immobilizer: immobilizerByte === 1,
+        voltage,
+        timestamp: new Date(epochSeconds * 1000).toISOString(),
+        status: ignitionByte === 1 ? 'Active' : 'Inactive',
         parsedAt: new Date().toISOString()
     };
 }
