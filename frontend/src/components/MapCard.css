@@ -11,7 +11,7 @@
 .map-coords {
     margin-left: auto;
     font-size: 0.72rem;
-    font-weight: 600;
+    font-weight: 700;
     color: var(--accent-blue);
     font-variant-numeric: tabular-nums;
     letter-spacing: 0.02em;
@@ -22,6 +22,8 @@
     border-radius: var(--radius-sm);
     overflow: hidden;
     min-height: 280px;
+    box-shadow: 0 8px 24px rgba(66, 133, 244, 0.05);
+    border: 1px solid rgba(66, 133, 244, 0.08);
 }
 
 .leaflet-map {
@@ -31,15 +33,20 @@
     border-radius: var(--radius-sm);
 }
 
-/* Dark theme overrides for Leaflet controls */
+/* Light theme Leaflet controls */
 .leaflet-control-zoom a {
-    background: var(--bg-secondary) !important;
+    background: #ffffff !important;
     color: var(--text-primary) !important;
-    border-color: var(--border-card) !important;
+    border-color: rgba(66, 133, 244, 0.1) !important;
+    box-shadow: var(--shadow-sm) !important;
+}
+
+.leaflet-control-zoom a:hover {
+    background: rgba(66, 133, 244, 0.02) !important;
 }
 
 .leaflet-control-attribution {
-    background: rgba(17, 24, 39, 0.7) !important;
+    background: rgba(255, 255, 255, 0.85) !important;
     color: var(--text-muted) !important;
     font-size: 0.6rem !important;
 }

@@ -1,58 +1,77 @@
 import './SignalCard.css';
 
 const SIGNAL_MAX = 31;
-const TOTAL_BARS = 5;
 
 export default function SignalCard({ vehicle }) {
     if (!vehicle) return <Skeleton />;
 
     const { signalStrength = 0, operator = 'Unknown', gpsFix } = vehicle;
 
-    // Map 0–31 signal to 0–5 bars
-    const filledBars = Math.round((signalStrength / SIGNAL_MAX) * TOTAL_BARS);
+    // Calculate percentage for circular progress
+    const percentage = Math.min((signalStrength / SIGNAL_MAX) * 100, 100);
+    const radius = 36;
+    const circumference = 2 * Math.PI * radius;
+    const offset = circumference - (percentage / 100) * circumference;
+
+    const signalColor = signalStrength > 20
+        ? 'var(--accent-green)'
+        : signalStrength > 10
+            ? 'var(--accent-amber)'
+            : 'var(--accent-red)';
 
     return (
         <div className="glass-card fade-in signal-card">
             <div className="card-header">
                 <span className="icon">📶</span>
-                <h3>Network & GPS</h3>
+                <h3>Connectivity</h3>
             </div>
 
-            <div className="signal-body">
-                {/* Signal bars visual */}
-                <div className="signal-bars-section">
-                    <div className="signal-bars" title={`Signal: ${signalStrength}/${SIGNAL_MAX}`}>
-                        {Array.from({ length: TOTAL_BARS }).map((_, i) => (
-                            <div
-                                key={i}
-                                className={`bar ${i < filledBars ? 'filled' : ''}`}
-                                style={{ height: `${((i + 1) / TOTAL_BARS) * 100}%` }}
-                            />
-                        ))}
+            <div className="signal-content">
+                <div className="signal-visualization">
+                    <svg className="progress-ring" width="100" height="100">
+                        <circle
+                            className="progress-ring-circle-bg"
+                            stroke="rgba(66, 133, 244, 0.05)"
+                            strokeWidth="8"
+                            fill="transparent"
+                            r={radius}
+                            cx="50"
+                            cy="50"
+                        />
+                        <circle
+                            className="progress-ring-circle"
+                            stroke={signalColor}
+                            strokeWidth="8"
+                            strokeDasharray={`${circumference} ${circumference}`}
+                            style={{ strokeDashoffset: offset }}
+                            strokeLinecap="round"
+                            fill="transparent"
+                            r={radius}
+                            cx="50"
+                            cy="50"
+                        />
+                    </svg>
+                    <div className="signal-value-overlay">
+                        <span className="value" style={{ color: signalColor }}>{signalStrength}</span>
+                        <span className="label">RSSI</span>
                     </div>
-                    <span className="signal-number">{signalStrength}<span className="signal-max">/{SIGNAL_MAX}</span></span>
                 </div>
 
-                {/* Info */}
-                <div className="signal-info">
-                    <div className="data-row">
-                        <span className="data-label">Network</span>
-                        <span className="data-value operator-name">{operator}</span>
+                <div className="signal-details">
+                    <div className="detail-item">
+                        <span className="detail-label">Network</span>
+                        <span className="detail-value operator-name">{operator}</span>
                     </div>
-                    <div className="data-row">
-                        <span className="data-label">GPS Fix</span>
-                        <span className="data-value">
-                            <span className={`badge ${gpsFix ? 'badge-green' : 'badge-red'}`}>
-                                {gpsFix ? '● Valid Fix' : '○ No Fix'}
-                            </span>
+                    <div className="detail-item">
+                        <span className="detail-label">GPS Status</span>
+                        <span className={`status-badge ${gpsFix ? 'fix' : 'no-fix'}`}>
+                            {gpsFix ? 'Valid Fix' : 'Searching...'}
                         </span>
                     </div>
-                    <div className="data-row">
-                        <span className="data-label">Signal Quality</span>
-                        <span className="data-value">
-                            <span className={`badge ${signalStrength > 20 ? 'badge-green' : signalStrength > 10 ? 'badge-amber' : 'badge-red'}`}>
-                                {signalStrength > 20 ? 'Strong' : signalStrength > 10 ? 'Moderate' : 'Weak'}
-                            </span>
+                    <div className="detail-item">
+                        <span className="detail-label">Quality</span>
+                        <span className="quality-text" style={{ color: signalColor }}>
+                            {signalStrength > 20 ? 'Excellent' : signalStrength > 10 ? 'Good' : 'Poor'}
                         </span>
                     </div>
                 </div>
@@ -64,7 +83,7 @@ export default function SignalCard({ vehicle }) {
 function Skeleton() {
     return (
         <div className="glass-card fade-in signal-card">
-            <div className="card-header"><span className="icon">📶</span><h3>Network & GPS</h3></div>
+            <div className="card-header"><span className="icon">📶</span><h3>Connectivity</h3></div>
             <div className="skeleton-line wide" /><div className="skeleton-line" />
         </div>
     );

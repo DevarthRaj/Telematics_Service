@@ -31,7 +31,7 @@ export default function SpeedCard({ vehicle }) {
                         <path
                             d="M 10 85 A 70 70 0 0 1 150 85"
                             fill="none"
-                            stroke="rgba(148,163,184,0.1)"
+                            stroke="rgba(108,99,255,0.1)"
                             strokeWidth={stroke}
                             strokeLinecap="round"
                         />

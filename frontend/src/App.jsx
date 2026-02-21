@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Header from './components/Header';
 import SignalCard from './components/SignalCard';
 import MapCard from './components/MapCard';
@@ -6,14 +6,18 @@ import SpeedCard from './components/SpeedCard';
 import VehicleCard from './components/VehicleCard';
 import ImmobilizerSwitch from './components/ImmobilizerSwitch';
 
-const POLL_INTERVAL = 3000;
-
 export default function App() {
     const [vehicle, setVehicle] = useState(null);
     const [isDummy, setIsDummy] = useState(true);
     const [immobilizerState, setImmobilizerState] = useState(false);
     const [connected, setConnected] = useState(false);
+    const [geofence, setGeofence] = useState(null);
+    const [geofenceBreach, setGeofenceBreach] = useState(false);
     const [lastFetch, setLastFetch] = useState(null);
+    const [killed, setKilled] = useState(false);
+    const [pollInterval, setPollInterval] = useState(3000);
+
+    const pollRef = useRef(null);
 
     const fetchData = useCallback(async () => {
         try {
@@ -25,6 +29,8 @@ export default function App() {
             setVehicle(v);
             setIsDummy(!!v?.isDummy);
             setImmobilizerState(data.immobilizerState ?? false);
+            setGeofence(data.geofence || null);
+            setGeofenceBreach(data.geofenceBreach ?? false);
             setConnected(true);
             setLastFetch(new Date());
         } catch {
@@ -32,11 +38,13 @@ export default function App() {
         }
     }, []);
 
+    // Re-create interval whenever pollInterval changes
     useEffect(() => {
+        if (killed) return;
         fetchData();
-        const id = setInterval(fetchData, POLL_INTERVAL);
-        return () => clearInterval(id);
-    }, [fetchData]);
+        pollRef.current = setInterval(fetchData, pollInterval);
+        return () => clearInterval(pollRef.current);
+    }, [fetchData, killed, pollInterval]);
 
     const handleImmobilizerToggle = async (active) => {
         try {
@@ -48,6 +56,14 @@ export default function App() {
             if (!res.ok) throw new Error('Failed');
             const data = await res.json();
             setImmobilizerState(data.immobilizerState);
+
+            if (active) {
+                clearInterval(pollRef.current);
+                pollRef.current = null;
+                setKilled(true);
+                setConnected(false);
+                setVehicle(prev => prev ? { ...prev, speed: 0 } : prev);
+            }
         } catch (err) {
             console.error('Immobilizer toggle failed:', err);
         }
@@ -55,27 +71,46 @@ export default function App() {
 
     return (
         <>
-            <Header connected={connected} lastFetch={lastFetch} isLive={vehicle?.isLive} />
+            <Header
+                connected={connected}
+                lastFetch={lastFetch}
+                isLive={!killed && vehicle?.isLive}
+                pollInterval={pollInterval}
+                onPollChange={setPollInterval}
+                geofenceBreach={geofenceBreach}
+            />
 
             <main className="dashboard-grid">
-                {isDummy && (
+                {killed && (
+                    <div className="dummy-banner" style={{ borderColor: '#f87171', background: 'rgba(248,113,113,0.08)' }}>
+                        🚨 KILL SWITCH ENGAGED — All data feeds stopped. Reload the page to resume.
+                    </div>
+                )}
+
+                {!killed && isDummy && (
                     <div className="dummy-banner">
                         ⚠ No live data from device — displaying demo values. Data will update automatically when packets arrive.
                     </div>
                 )}
 
-                <MapCard vehicle={vehicle} />
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                    <SignalCard vehicle={vehicle} />
+                <div className="full-width">
+                    <MapCard vehicle={vehicle} geofence={geofence} geofenceBreach={geofenceBreach} />
+                </div>
+
+                <div className="stat-column">
+                    <VehicleCard vehicle={vehicle} />
                     <SpeedCard vehicle={vehicle} />
                 </div>
 
-                <VehicleCard vehicle={vehicle} />
+                <SignalCard vehicle={vehicle} />
+
                 <ImmobilizerSwitch
                     active={immobilizerState}
                     onToggle={handleImmobilizerToggle}
+                    killed={killed}
                 />
             </main>
         </>
     );
 }
+

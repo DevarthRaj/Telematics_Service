@@ -44,6 +44,21 @@ export default function VehicleCard({ vehicle }) {
                 <span className="data-label">Last Update</span>
                 <span className="data-value">{formatTime(vehicle.timestamp)}</span>
             </div>
+
+            <div className="data-row" style={{ marginTop: '0.5rem', paddingTop: '0.5rem', borderTop: '1px dashed rgba(66, 133, 244, 0.1)' }}>
+                <span className="data-label">Latitude</span>
+                <span className="data-value" style={{ fontFamily: 'monospace', color: 'var(--accent-blue)' }}>{vehicle.latitude?.toFixed(6) ?? '—'}</span>
+            </div>
+
+            <div className="data-row">
+                <span className="data-label">Longitude</span>
+                <span className="data-value" style={{ fontFamily: 'monospace', color: 'var(--accent-blue)' }}>{vehicle.longitude?.toFixed(6) ?? '—'}</span>
+            </div>
+
+            <div className="data-row">
+                <span className="data-label">Center Offset</span>
+                <span className="data-value" style={{ fontWeight: '700' }}>{Math.round(vehicle.geofenceDistance || 0).toLocaleString()} m</span>
+            </div>
         </div>
     );
 }

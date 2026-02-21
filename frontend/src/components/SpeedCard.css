@@ -1,8 +1,13 @@
+/* ══════════════════════════════════════════════════════════════
+   Speed Component — Brand Refined Style
+   ══════════════════════════════════════════════════════════════ */
+
 .speed-body {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 1rem;
+    gap: 1.25rem;
+    padding: 0.5rem 0;
 }
 
 /* ── Gauge ─────────────────────────────────────────────────── */
@@ -31,38 +36,52 @@
 }
 
 .gauge-number {
-    font-size: 2rem;
+    font-size: 2.2rem;
     font-weight: 800;
     line-height: 1;
     font-variant-numeric: tabular-nums;
     transition: color 0.4s ease;
+    color: var(--text-primary);
+    letter-spacing: -0.02em;
 }
 
 .gauge-unit {
     display: block;
-    font-size: 0.7rem;
+    font-size: 0.65rem;
     color: var(--text-muted);
-    font-weight: 500;
-    margin-top: 2px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-top: 4px;
 }
 
 /* ── Ignition Badge ────────────────────────────────────────── */
 .ignition-badge {
     display: inline-flex;
     align-items: center;
-    gap: 0.35rem;
-    font-weight: 600;
-    font-size: 0.85rem;
+    gap: 0.4rem;
+    font-weight: 700;
+    font-size: 0.82rem;
+    padding: 0.35rem 0.8rem;
+    border-radius: 999px;
+    background: rgba(66, 133, 244, 0.04);
 }
 
 .ignition-badge.on {
     color: var(--accent-green);
+    background: var(--accent-green-dim);
+    border: 1px solid rgba(52, 168, 83, 0.1);
 }
 
 .ignition-badge.off {
     color: var(--accent-red);
+    background: var(--accent-red-dim);
+    border: 1px solid rgba(234, 67, 53, 0.1);
 }
 
 .speed-meta {
     width: 100%;
+    border-top: 1px solid rgba(66, 133, 244, 0.06);
+    padding-top: 1rem;
+    margin-top: 0.5rem;
 }
